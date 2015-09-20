@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string.h>
 #include <getopt.h>
 
 #include "misc/debug.h"
@@ -138,6 +139,31 @@ void quicksort(unsigned int N, unsigned int ord[N], const void* data, quicksort_
 }
 
 
+const char* command_line = NULL;
+
+void save_command_line(int argc, char* argv[])
+{
+	size_t len = 0;
+
+	for (int i = 0; i < argc; i++)
+		len += strlen(argv[i]) + 1;
+
+	char* buf = xmalloc(len);
+
+	size_t pos = 0;
+
+	for (int i = 0; i < argc; i++) {
+
+		strcpy(buf + pos, argv[i]);
+		pos += strlen(argv[i]);
+		buf[pos++] = ' ';
+	}
+
+	buf[pos] = '\0';
+
+	command_line = buf;
+}
+
 
 void mini_cmdline(int argc, char* argv[], int expected_args, const char* usage_str, const char* help_str)
 {
@@ -147,6 +173,8 @@ void mini_cmdline(int argc, char* argv[], int expected_args, const char* usage_s
 
 bool mini_cmdline_bool(int argc, char* argv[], char flag_char, int expected_args, const char* usage_str, const char* help_str)
 {
+	save_command_line(argc, argv);
+
 	bool flag = false;
 	char opts[3] = { 'h', flag_char, '\0' };
 
