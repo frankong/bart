@@ -20,7 +20,7 @@
 #include "num/flpmath.h"
 #include "num/fft.h"
 
-#include "iter/iter3.h"
+#include "iter/iterg.h"
 #include "iter/thresh.h"
 
 #include "misc/misc.h"

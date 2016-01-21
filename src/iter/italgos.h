@@ -226,10 +226,10 @@ void pgd( unsigned int iter,			///< Number of iterations
 	  float alpha,			        ///< Step size
 	  long N,				///< Length of variable x
 	  const struct vec_iter_s* vops,	///< Vector arithmetic operator (CPU/GPU)
-	  void* fdata,			        ///< Linear operator data structure
-	  op_f gradf,				///< Linear operator A
-	  void* gdata,			        ///< Proximal operator data structure
-	  prox_f proxg,				///< Proximal operator, ex, soft-threshold
+	  void* fdata,			        ///< f data structure
+	  op_f gradf,				///< Gradient of f
+	  void* gdata,			        ///< g data structure
+	  prox_f proxg,				///< Proximal operator of g
 	  float* x,				///< Optimization variable, ex, image
 	  const float* x_truth,			///< Ground truth (optional)
 	  void* odata,			        ///< Objective data structure (optional)

@@ -25,7 +25,7 @@ Makefile.local
 # version string
 src/misc/version.inc
 
-# ctags
+# ctags and gtags
 tags
 GTAGS
 GSYMS

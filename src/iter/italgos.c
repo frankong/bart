@@ -817,8 +817,8 @@ double power(unsigned int maxiter,
 /**
  * @brief Proximal gradient descent
  *
- * Solves \min_x f(x) + g(x)
- * where f is smooth (can be non-convex)
+ * Finds local minimum of f(x) + g(x)
+ * where f is smooth, but can be non-convex
  * and g is non-smooth but convex
  *
  * Requires gradient of f and proximal of g
@@ -829,10 +829,10 @@ void pgd( unsigned int iter,			///< Number of iterations
 	  float alpha,			        ///< Step size
 	  long N,				///< Length of variable x
 	  const struct vec_iter_s* vops,	///< Vector arithmetic operator (CPU/GPU)
-	  void* fdata,			        ///< Linear operator data structure
-	  op_f gradf,				///< Linear operator A
-	  void* gdata,			        ///< Proximal operator data structure
-	  prox_f proxg,				///< Proximal operator, ex, soft-threshold
+	  void* fdata,			        ///< f data structure
+	  op_f gradf,				///< Gradient of f
+	  void* gdata,			        ///< g data structure
+	  prox_f proxg,				///< Proximal operator of g
 	  float* x,				///< Optimization variable, ex, image
 	  const float* x_truth,			///< Ground truth (optional)
 	  void* odata,			        ///< Objective data structure (optional)
