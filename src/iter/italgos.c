@@ -103,11 +103,6 @@ void landweber_sym(unsigned int maxiter, float epsilon, float alpha, long N, voi
 /**
  * Store information about iterative algorithm.
  * Used to flexibly modify behavior, e.g. continuation
- *
- * @param rsnew current residual
- * @param rsnot initial residual
- * @param iter current iteration
- * @param maxiter maximum iteration
  */
 struct iter_data {
 
@@ -146,19 +141,6 @@ static float ist_continuation(struct iter_data* itrdata, const float delta)
 
 /**
  * Iterative Soft Thresholding
- *
- * @param maxiter maximum number of iterations
- * @param epsilon stop criterion
- * @param tau (step size) weighting on the residual term, A^H (b - Ax)
- * @param lambda_start initial regularization weighting
- * @param lambda_end final regularization weighting (for continuation)
- * @param N size of input, x
- * @param data structure, e.g. sense_data
- * @param vops vector ops definition
- * @param op linear operator, e.g. A
- * @param thresh threshold function, e.g. complex soft threshold
- * @param x initial estimate
- * @param b observations
  */
 void ist(unsigned int maxiter, float epsilon, float tau,
 		float continuation, bool hogwild, long N, void* data,
@@ -255,19 +237,6 @@ void ist(unsigned int maxiter, float epsilon, float tau,
 
 /**
  * Iterative Soft Thresholding/FISTA to solve min || b - Ax ||_2 + lambda || T x ||_1
- *
- * @param maxiter maximum number of iterations
- * @param epsilon stop criterion
- * @param tau (step size) weighting on the residual term, A^H (b - Ax)
- * @param lambda_start initial regularization weighting
- * @param lambda_end final regularization weighting (for continuation)
- * @param N size of input, x
- * @param data structure, e.g. sense_data
- * @param vops vector ops definition
- * @param op linear operator, e.g. A
- * @param thresh threshold function, e.g. complex soft threshold
- * @param x initial estimate
- * @param b observations
  */
 void fista(unsigned int maxiter, float epsilon, float tau, 
 	   float continuation, bool hogwild,
@@ -842,5 +811,75 @@ double power(unsigned int maxiter,
 	}
 
 	return s;
+}
+
+
+/**
+ * @brief Proximal gradient descent
+ *
+ * Solves \min_x f(x) + g(x)
+ * where f is smooth (can be non-convex)
+ * and g is non-smooth but convex
+ *
+ * Requires gradient of f and proximal of g
+ * 
+ */
+void pgd( unsigned int iter,			///< Number of iterations
+	  float tol,				///< Termination tolerance 
+	  float alpha,			        ///< Step size
+	  long N,				///< Length of variable x
+	  const struct vec_iter_s* vops,	///< Vector arithmetic operator (CPU/GPU)
+	  void* fdata,			        ///< Linear operator data structure
+	  op_f gradf,				///< Linear operator A
+	  void* gdata,			        ///< Proximal operator data structure
+	  prox_f proxg,				///< Proximal operator, ex, soft-threshold
+	  float* x,				///< Optimization variable, ex, image
+	  const float* x_truth,			///< Ground truth (optional)
+	  void* odata,			        ///< Objective data structure (optional)
+	  obj_f obj, 				///< Objective function (optional)
+	  ls_f ls)                              ///< Line search criterion (optional)
+{
+	float* x_new = vops->allocate(N);
+	float* gradfx = vops->allocate(N);
+
+	for (unsigned int i = 0; i < iter; i++) {
+
+		// Get gradient
+
+		gradf( fdata, gradfx, x );
+
+		// x_new = proxg (x - alpha gradf)
+		
+		vops->smul( N, -alpha, x_new, gradfx );
+
+		vops->add( N, x_new, x, x_new );
+
+		proxg( gdata, alpha, x_new, x_new );
+
+		while( !ls( fdata, alpha, x_new, gradfx, x )  ){
+
+			alpha /= 2.0f;
+			
+			// x_new = proxg (x - alpha gradf)
+			
+			vops->smul( N, -alpha, x_new, gradfx );
+
+			vops->add( N, x_new, x, x_new );
+
+			proxg( gdata, alpha, x_new, x_new );
+
+		}
+
+		// x = x_new
+		vops->copy(N, x, x_new);
+	}
+
+
+	// TODO support these.
+	// TODO make ist, fista and landweber based on this.
+	UNUSED( tol );
+	UNUSED( x_truth );
+	UNUSED( odata );
+	UNUSED( obj );
 }
 
