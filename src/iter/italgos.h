@@ -18,16 +18,21 @@ struct vec_iter_s;
 typedef void (*prox_fun_t)(void* prox_data, float rho, float* z, const float* x_plus_u);
 #endif
 
+
+typedef void (*op_f)(void* data, float* dst, const float* src);
+typedef void (*prox_f)(void* data, float lambda, float* dst, const float* src);
+typedef float (*obj_f)(const void*, const float*);
+typedef void (*inv_f)(void* data, float alpha, float* dst, const float* src);
+typedef void (*inv2_f)(void* data, float alpha, float* res, float* dst, const float* src);
+
 /**
- * Store italg history
- *
- * @param numiter actual number of iterations run
+ * @brief Store italg history
  */
 struct iter_history_s {
-	unsigned int numiter;
-	double* objective;
-	double* relMSE;
-	double* resid;
+	unsigned int numiter;   ///< Number of iterations
+	double* objective;	///< Objective values over iterations
+	double* relMSE;		///< Relative mean square errors over iterations
+	double* resid;		///< Residual over iterations
 };
 
 
@@ -37,126 +42,219 @@ struct pocs_proj_op {
 	void* data;
 };
 
+/**
+ * @brief Conjugate gradient
+ *
+ * Solve min_x || A x - b ||_2^2 + lambda || x ||_2^2
+ * where A is Hermitian, ie A = A^*
+ */
+float conjgrad(unsigned int iter,		///< Number of iterations
+	       float l2lambda,			///< L2 regularization, ie, || x ||_2^2
+	       float tol,			///< Terminating tolerance
+	       long N,				///< Length of variable x
+	       void* data,			///< Data structure for linear operator A
+	       const struct vec_iter_s* vops,	///< Vector arithmetic operator, (CPU / GPU)
+	       op_f linop,			///< Hermitian linear operator A
+	       float* x,			///< Optimization variable, ie, image
+	       const float* b,			///< Observed data, ie, kspace
+	       const float* x_truth,		///< Ground truth (optional)
+	       void* obj_data,			///< Objective function data struction (optional)
+	       obj_f obj);			///< Objective function (optional)
 
-float conjgrad(unsigned int maxiter, float l2lambda, float epsilon, 
-	long N, void* data,
-	const struct vec_iter_s* vops,
-	void (*linop)(void* data, float* dst, const float* src), 
-	float* x, const float* b, const float* x_truth,
-	void* obj_eval_data,
-	float (*obj_eval)(const void*, const float*));
 
-float conjgrad_hist(struct iter_history_s* iter_history, unsigned int maxiter, float l2lambda, float epsilon, 
-	long N, void* data,
-	const struct vec_iter_s* vops,
-	void (*linop)(void* data, float* dst, const float* src), 
-	float* x, const float* b, const float* x_truth,
-	void* obj_eval_data,
-	float (*obj_eval)(const void*, const float*));
+float conjgrad_hist(struct iter_history_s* iter_history,///< Data structure for iteration history
+		    unsigned int iter,			///< Number of iterations
+		    float l2lambda,			///< L2 regularization, ie, || x ||_2^2
+		    float tol,				///< Terminating tolerance
+		    long N,				///< Length of variable x
+		    void* data,				///< Data structure for linear operator A
+		    const struct vec_iter_s* vops,	///< Vector arithmetic operator (CPU / GPU)
+		    op_f linop,			        ///< Hermitian linear operator A
+		    float* x,				///< Optimization variable, ie, image
+		    const float* b,			///< Observed data, ie, kspace
+		    const float* x_truth,		///< Ground truth (optional)
+		    void* obj_data,			///< Objective function data struction (optional)
+		    obj_f obj);				///< Objective function (optional)
 
 
 extern const struct cg_data_s* cg_data_init(long N, const struct vec_iter_s* vops);
+
 extern void cg_data_free(const struct cg_data_s* cgdata, const struct vec_iter_s* vops);
+
 float conjgrad_hist_prealloc(struct iter_history_s* iter_history, 
-			     unsigned int maxiter, float l2lambda, float epsilon, 
-			     long N, void* data, struct cg_data_s* cgdata,
+			     unsigned int iter,
+			     float l2lambda,
+			     float tol, 
+			     long N,
+			     void* data,
+			     struct cg_data_s* cgdata,
 			     const struct vec_iter_s* vops,
-			     void (*linop)(void* data, float* dst, const float* src), 
-			     float* x, const float* b, const float* x_truth,
-			     void* obj_eval_data,
-			     float (*obj_eval)(const void*, const float*));
+			     op_f linop, 
+			     float* x,
+			     const float* b,
+			     const float* x_truth,
+			     void* obj_data,
+			     obj_f obj);
 
 
-void landweber(unsigned int maxiter, float epsilon, float alpha,
-	long N, long M, void* data,
-	const struct vec_iter_s* vops,
-	void (*op)(void* data, float* dst, const float* src), 
-	void (*adj)(void* data, float* dst, const float* src), 
-	float* x, const float* b,
-	float (*obj_eval)(const void*, const float*));
+void landweber(unsigned int iter,
+	       float tol,
+	       float stepsize,
+	       long N,
+	       long M,
+	       void* data,
+	       const struct vec_iter_s* vops,
+	       op_f op, 
+	       op_f adj, 
+	       float* x,
+	       const float* b,
+	       obj_f obj);
 
-void landweber_sym(unsigned int maxiter, float epsilon, float alpha,	
-	long N, void* data,
-	const struct vec_iter_s* vops,
-	void (*op)(void* data, float* dst, const float* src), 
-	float* x, const float* b);
+void landweber_sym(unsigned int iter,
+		   float tol,
+		   float stepsize,	
+		   long N, void* data,
+		   const struct vec_iter_s* vops,
+		   op_f op, 
+		   float* x,
+		   const float* b);
 
-void ist(unsigned int maxiter, float epsilon, float tau, 
-	 float continuation, _Bool hogwild, 
-	 long N, void* data,
+void ist(unsigned int iter,
+	 float tol,
+	 float stepsize, 
+	 float continuation,
+	 _Bool hogwild, 
+	 long N,
+	 void* data,
 	 const struct vec_iter_s* vops,
-	 void (*op)(void* data, float* dst, const float* src), 
-	 void (*thresh)(void* data, float lambda, float* dst, const float* src),
+	 op_f op, 
+	 prox_f thresh,
 	 void* tdata,
-	 float* x, const float* b, const float* x_truth,
-	 void* obj_eval_data,
-	 float (*obj_eval)(const void*, const float*));
+	 float* x,
+	 const float* b,
+	 const float* x_truth,
+	 void* obj_data,
+	 obj_f obj);
 
-void fista(unsigned int maxiter, float epsilon, float tau, 
-	   float continuation, _Bool hogwild, 
+void fista(unsigned int iter,
+	   float tol,
+	   float stepsize, 
+	   float continuation,
+	   _Bool hogwild, 
 	   long N, void* data,
 	   const struct vec_iter_s* vops,
-	   void (*op)(void* data, float* dst, const float* src), 
-	   void (*thresh)(void* data, float lambda, float* dst, const float* src),
+	   op_f op, 
+	   prox_f thresh,
 	   void* tdata,
-	   float* x, const float* b, const float* x_truth,
-	   void* obj_eval_data,
-	   float (*obj_eval)(const void*, const float*));
-	
+	   float* x,
+	   const float* b,
+	   const float* x_truth,
+	   void* obj_data,
+	   obj_f obj);
 
-void irgnm(unsigned int iter, float alpha, float redu, void* data, 
-	long N, long M,
-	const struct vec_iter_s* vops,
-	void (*op)(void* data, float* dst, const float* src), 
-	void (*adj)(void* data, float* dst, const float* src), 
-	void (*inv)(void* data, float alpha, float* dst, const float* src), 
-	float* x, const float* x0, const float* y);
-
-void irgnm2(unsigned int iter, float alpha, float redu, void* data, 
-	long N, long M,
-	const struct vec_iter_s* vops,
-	void (*op)(void* data, float* dst, const float* src), 
-	void (*adj)(void* data, float* dst, const float* src), 
-	void (*inv2)(void* data, float alpha, float* res, float* dst, const float* src), 
-	float* x, const float* x0, const float* y);
-
-void split(unsigned int maxiter, float epsilon, float mu, float lambda, 
-	long N, void* data,
-	const struct vec_iter_s* vops,
-	void (*op)(void* data, float* dst, const float* src), 
-	void (*thresh)(void* data, float lambda, float* dst, const float* src),
-	float* x, const float* b);
-
-void splitbreg(unsigned int maxiter, float epsilon, float mu, float lambda,
-	long N, void* data,
-	const struct vec_iter_s* vops,
-	void (*op)(void* data, float* dst, const float* src), 
-	void (*thresh)(void* data, float lambda, float* dst, const float* src),
-	float* x, const float* b,
-	float (*obj_eval)(const void*, const float*));
-
-void irgnm_t(unsigned int iter, float alpha, float lambda, float redu, void* data,
-	long N, long M,
-	const struct vec_iter_s* vops,
-	void (*op)(void* data, float* dst, const float* src), 
-	void (*adj)(void* data, float* dst, const float* src), 
-	void (*inv)(void* data, float alpha, float* dst, const float* src), 
-	void (*thresh)(void* data, float lambda, float* dst, const float* src),
-	float* x, const float* x0, const float* y);
+void pgd( unsigned int iter,	///< Number of iterations
+	  float tol,		///< Terminating tolerance
+	  float stepsize,	///< Step size
+	  float continuation, 
+	  _Bool hogwild,
+	  long N,
+	  const struct vec_iter_s* vops,
+	  void* op_data,
+	  op_f op,
+	  void* prox_data,
+	  prox_f prox,
+	  float* x,
+	  const float* b,
+	  const float* x_truth,
+	  void* obj_data,
+	  obj_f obj);
 
 
-void pocs(unsigned int maxiter,
-	unsigned int D, const struct pocs_proj_op* proj_ops, 
-	const struct vec_iter_s* vops,
-	long N, float* x, const float* x_truth,
-	void* obj_eval_data,
-	float (*obj_eval)(const void*, const float*));
+void irgnm(unsigned int iter,
+	   float stepsize,
+	   float redu,
+	   void* data, 
+	   long N,
+	   long M,
+	   const struct vec_iter_s* vops,
+	   op_f op, 
+	   op_f adj, 
+	   inv_f inv, 
+	   float* x,
+	   const float* x0,
+	   const float* y);
 
-double power(unsigned int maxiter,
+void irgnm2(unsigned int iter,
+	    float stepsize,
+	    float redu,
+	    void* data, 
+	    long N,
+	    long M,
+	    const struct vec_iter_s* vops,
+	    op_f op, 
+	    op_f adj, 
+	    inv2_f inv2,
+	    float* x,
+	    const float* x0,
+	    const float* y);
+
+void split(unsigned int iter,
+	   float tol,
+	   float mu,
+	   float lambda, 
 	   long N, void* data,
 	   const struct vec_iter_s* vops,
-	   void (*op)(void* data, float* dst, const float* src), 
-	   float* u);
+	   op_f op, 
+	   prox_f thresh,
+	   float* x,
+	   const float* b);
+
+void splitbreg(unsigned int iter,
+	       float tol,
+	       float mu,
+	       float lambda,
+	       long N,
+	       void* data,
+	       const struct vec_iter_s* vops,
+	       op_f op, 
+	       prox_f thresh,
+	       float* x,
+	       const float* b,
+	       obj_f obj);
+
+void irgnm_t(unsigned int iter,
+	     float stepsize,
+	     float lambda,
+	     float redu,
+	     void* data,
+	     long N,
+	     long M,
+	     const struct vec_iter_s* vops,
+	     op_f op, 
+	     op_f adj,
+	     inv_f inv,
+	     prox_f thresh,
+	     float* x,
+	     const float* x0,
+	     const float* y);
+
+
+void pocs(unsigned int iter,
+	  unsigned int D,
+	  const struct pocs_proj_op* proj_ops, 
+	  const struct vec_iter_s* vops,
+	  long N,
+	  float* x,
+	  const float* x_truth,
+	  void* obj_data,
+	  obj_f obj);
+
+double power(unsigned int iter,
+	     long N,
+	     void* data,
+	     const struct vec_iter_s* vops,
+	     op_f op, 
+	     float* u);
 	   
 
 #endif // __ITALGOS_H
