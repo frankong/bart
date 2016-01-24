@@ -376,311 +376,301 @@ void landweber(unsigned int maxiter, float epsilon, float alpha, long N, long M,
 
 
 
-/**
- * Conjugate Gradient Descent to solve Ax = b for symmetric A
- *
- * @param maxiter maximum number of iterations
- * @param regularization parameter
- * @param epsilon stop criterion
- * @param N size of input, x
- * @param data structure, e.g. sense_data
- * @param vops vector ops definition
- * @param linop linear operator, i.e. A
- * @param x initial estimate
- * @param b observations
- */
-float conjgrad(unsigned int maxiter, float l2lambda, float epsilon, 
-	long N, void* data,
-	const struct vec_iter_s* vops,
-	void (*linop)(void* data, float* dst, const float* src), 
-	float* x, const float* b, const float* x_truth,
-	void* obj_eval_data,
-	float (*obj_eval)(const void*, const float*))
-{
-	float* r = vops->allocate(N);
-	float* p = vops->allocate(N);
-	float* Ap = vops->allocate(N);
+/* /\** */
+/*  * Conjugate Gradient Descent to solve Ax = b for symmetric A */
+/*  *\/ */
+/* float conjgrad(unsigned int maxiter, float l2lambda, float epsilon,  */
+/* 	long N, void* data, */
+/* 	const struct vec_iter_s* vops, */
+/* 	void (*linop)(void* data, float* dst, const float* src),  */
+/* 	float* x, const float* b, const float* x_truth, */
+/* 	void* obj_eval_data, */
+/* 	float (*obj_eval)(const void*, const float*)) */
+/* { */
+/* 	float* r = vops->allocate(N); */
+/* 	float* p = vops->allocate(N); */
+/* 	float* Ap = vops->allocate(N); */
 
-	float* x_err = NULL;
+/* 	float* x_err = NULL; */
 
-	if (NULL != x_truth)
-		x_err = vops->allocate(N);
+/* 	if (NULL != x_truth) */
+/* 		x_err = vops->allocate(N); */
 
-	// The first calculation of the residual might not
-	// be necessary in some cases...
+/* 	// The first calculation of the residual might not */
+/* 	// be necessary in some cases... */
 
-	linop(data, r, x);		// r = A x
-	vops->axpy(N, r, l2lambda, x);
+/* 	linop(data, r, x);		// r = A x */
+/* 	vops->axpy(N, r, l2lambda, x); */
 
-	vops->xpay(N, -1., r, b);	// r = b - r = b - A x
-	vops->copy(N, p, r);		// p = r
+/* 	vops->xpay(N, -1., r, b);	// r = b - r = b - A x */
+/* 	vops->copy(N, p, r);		// p = r */
 
-	float rsnot = (float)pow(vops->norm(N, r), 2.);
-	float rsold = rsnot;
-	float rsnew = rsnot;
+/* 	float rsnot = (float)pow(vops->norm(N, r), 2.); */
+/* 	float rsold = rsnot; */
+/* 	float rsnew = rsnot; */
 
-	float eps_squared = pow(epsilon, 2.);
+/* 	float eps_squared = pow(epsilon, 2.); */
 
-	if (0. == rsold) {
+/* 	if (0. == rsold) { */
 
-		debug_printf(DP_DEBUG3, "CG: early out\n");
-		return 0.;
-	}
+/* 		debug_printf(DP_DEBUG3, "CG: early out\n"); */
+/* 		return 0.; */
+/* 	} */
 
-	for (unsigned int i = 0; i < maxiter; i++) {
+/* 	for (unsigned int i = 0; i < maxiter; i++) { */
 		
-		if (NULL != x_truth) {
+/* 		if (NULL != x_truth) { */
 
-			vops->sub(N, x_err, x, x_truth);
-			debug_printf(DP_DEBUG2, "relMSE = %f\n", vops->norm(N, x_err) / vops->norm(N, x_truth));
-		}
+/* 			vops->sub(N, x_err, x, x_truth); */
+/* 			debug_printf(DP_DEBUG2, "relMSE = %f\n", vops->norm(N, x_err) / vops->norm(N, x_truth)); */
+/* 		} */
 
-		if ((NULL != obj_eval) && (NULL != obj_eval_data)) {
+/* 		if ((NULL != obj_eval) && (NULL != obj_eval_data)) { */
 
-			float objval = obj_eval(obj_eval_data, x);
-			debug_printf(DP_DEBUG2, "#CG%d OBJVAL= %f\n", i, objval);
-		}
+/* 			float objval = obj_eval(obj_eval_data, x); */
+/* 			debug_printf(DP_DEBUG2, "#CG%d OBJVAL= %f\n", i, objval); */
+/* 		} */
 
-		debug_printf(DP_DEBUG3, "#%d: %f\n", i, (double)sqrtf(rsnew));
+/* 		debug_printf(DP_DEBUG3, "#%d: %f\n", i, (double)sqrtf(rsnew)); */
 
-		linop(data, Ap, p);	// Ap = A p
-		vops->axpy(N, Ap, l2lambda, p);
+/* 		linop(data, Ap, p);	// Ap = A p */
+/* 		vops->axpy(N, Ap, l2lambda, p); */
 
-		float pAp = (float)vops->dot(N, p, Ap);
+/* 		float pAp = (float)vops->dot(N, p, Ap); */
 
-		if (0. == pAp)
-			break;
+/* 		if (0. == pAp) */
+/* 			break; */
 
-		float alpha = rsold / pAp;
+/* 		float alpha = rsold / pAp; */
 
-		vops->axpy(N, x, +alpha, p);
-		vops->axpy(N, r, -alpha, Ap);
+/* 		vops->axpy(N, x, +alpha, p); */
+/* 		vops->axpy(N, r, -alpha, Ap); */
 	
-		rsnew = (float)pow(vops->norm(N, r), 2.);
-		float beta = rsnew / rsold;
+/* 		rsnew = (float)pow(vops->norm(N, r), 2.); */
+/* 		float beta = rsnew / rsold; */
 		
-		rsold = rsnew;
+/* 		rsold = rsnew; */
 
-		if (rsnew <= eps_squared) {
-			//debug_printf(DP_DEBUG3, "%d ", i);
-			break;
-		}
+/* 		if (rsnew <= eps_squared) { */
+/* 			//debug_printf(DP_DEBUG3, "%d ", i); */
+/* 			break; */
+/* 		} */
 
-		vops->xpay(N, beta, p, r);	// p = beta * p + r
+/* 		vops->xpay(N, beta, p, r);	// p = beta * p + r */
 
-	}
+/* 	} */
 
-	vops->del(Ap);
-	vops->del(p);
-	vops->del(r);
+/* 	vops->del(Ap); */
+/* 	vops->del(p); */
+/* 	vops->del(r); */
 
-	if (NULL != x_truth)
-		vops->del(x_err);
+/* 	if (NULL != x_truth) */
+/* 		vops->del(x_err); */
 
-	return sqrtf(rsnew);
-}
+/* 	return sqrtf(rsnew); */
+/* } */
 
 
 
-/**
- * Conjugate Gradient Descent with history saving.
- * The history should be preallocated
- */
-float conjgrad_hist(struct iter_history_s* history, unsigned int maxiter, float l2lambda, float epsilon, 
-	long N, void* data,
-	const struct vec_iter_s* vops,
-	void (*linop)(void* data, float* dst, const float* src), 
-	float* x, const float* b, const float* x_truth,
-	void* obj_eval_data,
-	float (*obj_eval)(const void*, const float*))
-{
-	float* r = vops->allocate(N);
-	float* p = vops->allocate(N);
-	float* Ap = vops->allocate(N);
+/* /\** */
+/*  * Conjugate Gradient Descent with history saving. */
+/*  * The history should be preallocated */
+/*  *\/ */
+/* float conjgrad_hist(struct iter_history_s* history, unsigned int maxiter, float l2lambda, float epsilon,  */
+/* 	long N, void* data, */
+/* 	const struct vec_iter_s* vops, */
+/* 	void (*linop)(void* data, float* dst, const float* src),  */
+/* 	float* x, const float* b, const float* x_truth, */
+/* 	void* obj_eval_data, */
+/* 	float (*obj_eval)(const void*, const float*)) */
+/* { */
+/* 	float* r = vops->allocate(N); */
+/* 	float* p = vops->allocate(N); */
+/* 	float* Ap = vops->allocate(N); */
 
-	float* x_err = NULL;
+/* 	float* x_err = NULL; */
 
-	if (NULL != x_truth)
-		x_err = vops->allocate(N);
+/* 	if (NULL != x_truth) */
+/* 		x_err = vops->allocate(N); */
 
-	// The first calculation of the residual might not
-	// be necessary in some cases...
+/* 	// The first calculation of the residual might not */
+/* 	// be necessary in some cases... */
 
-	linop(data, r, x);		// r = A x
-	vops->axpy(N, r, l2lambda, x);
+/* 	linop(data, r, x);		// r = A x */
+/* 	vops->axpy(N, r, l2lambda, x); */
 
-	vops->xpay(N, -1., r, b);	// r = b - r = b - A x
-	vops->copy(N, p, r);		// p = r
+/* 	vops->xpay(N, -1., r, b);	// r = b - r = b - A x */
+/* 	vops->copy(N, p, r);		// p = r */
 
-	float rsnot = (float)pow(vops->norm(N, r), 2.);
-	float rsold = rsnot;
-	float rsnew = rsnot;
+/* 	float rsnot = (float)pow(vops->norm(N, r), 2.); */
+/* 	float rsold = rsnot; */
+/* 	float rsnew = rsnot; */
 
-	float eps_squared = pow(epsilon, 2.);
+/* 	float eps_squared = pow(epsilon, 2.); */
 
-	history->numiter = 0;
+/* 	history->numiter = 0; */
 
-	for (unsigned int i = 0; i < maxiter; i++) {
+/* 	for (unsigned int i = 0; i < maxiter; i++) { */
 
-		history->numiter = i + 1;
+/* 		history->numiter = i + 1; */
 
-		if (NULL != x_truth) {
+/* 		if (NULL != x_truth) { */
 
-			vops->sub(N, x_err, x, x_truth);
-			float relMSE = vops->norm(N, x_err) / vops->norm(N, x_truth);
-			history->relMSE[i] = relMSE;
-			debug_printf(DP_DEBUG3, "relMSE = %f\n", relMSE);
-		}
+/* 			vops->sub(N, x_err, x, x_truth); */
+/* 			float relMSE = vops->norm(N, x_err) / vops->norm(N, x_truth); */
+/* 			history->relMSE[i] = relMSE; */
+/* 			debug_printf(DP_DEBUG3, "relMSE = %f\n", relMSE); */
+/* 		} */
 
-		if ((NULL != obj_eval) && (NULL != obj_eval_data)) {
+/* 		if ((NULL != obj_eval) && (NULL != obj_eval_data)) { */
 
-			float objval = obj_eval(obj_eval_data, x);
-			history->objective[i] = objval;
-			debug_printf(DP_DEBUG3, "#CG%d OBJVAL= %f\n", i, objval);
-		}
+/* 			float objval = obj_eval(obj_eval_data, x); */
+/* 			history->objective[i] = objval; */
+/* 			debug_printf(DP_DEBUG3, "#CG%d OBJVAL= %f\n", i, objval); */
+/* 		} */
 
-		//debug_printf(DP_DEBUG3, "#%d: %f\n", i, (double)sqrtf(rsnew));
+/* 		//debug_printf(DP_DEBUG3, "#%d: %f\n", i, (double)sqrtf(rsnew)); */
 
-		linop(data, Ap, p);	// Ap = A p
-		vops->axpy(N, Ap, l2lambda, p);
+/* 		linop(data, Ap, p);	// Ap = A p */
+/* 		vops->axpy(N, Ap, l2lambda, p); */
 
-		float alpha = rsold / (float)vops->dot(N, p, Ap);
+/* 		float alpha = rsold / (float)vops->dot(N, p, Ap); */
 
-		vops->axpy(N, x, +alpha, p);
-		vops->axpy(N, r, -alpha, Ap);
+/* 		vops->axpy(N, x, +alpha, p); */
+/* 		vops->axpy(N, r, -alpha, Ap); */
 	
-		rsnew = (float)pow(vops->norm(N, r), 2.);
-		float beta = rsnew / rsold;
+/* 		rsnew = (float)pow(vops->norm(N, r), 2.); */
+/* 		float beta = rsnew / rsold; */
 		
-		rsold = rsnew;
+/* 		rsold = rsnew; */
 
-		if (rsnew <= eps_squared) {
-			//debug_printf(DP_DEBUG3, "%d ", i);
-			break;
-		}
+/* 		if (rsnew <= eps_squared) { */
+/* 			//debug_printf(DP_DEBUG3, "%d ", i); */
+/* 			break; */
+/* 		} */
 
-		vops->xpay(N, beta, p, r);	// p = beta * p + r
+/* 		vops->xpay(N, beta, p, r);	// p = beta * p + r */
 
-		history->resid[i] = sqrtf(rsnew);
-	}
+/* 		history->resid[i] = sqrtf(rsnew); */
+/* 	} */
 
 
-	// cleanup:
-	vops->del(Ap);
-	vops->del(p);
-	vops->del(r);
+/* 	// cleanup: */
+/* 	vops->del(Ap); */
+/* 	vops->del(p); */
+/* 	vops->del(r); */
 
-	if (NULL != x_truth)
-		vops->del(x_err);
+/* 	if (NULL != x_truth) */
+/* 		vops->del(x_err); */
 
-	return sqrtf(rsnew);
-}
+/* 	return sqrtf(rsnew); */
+/* } */
 
-/**
- * Internal variable used by conjgrad_hist_prealloc
- */
-struct cg_data_s {
+/* /\** */
+/*  * Internal variable used by conjgrad_hist_prealloc */
+/*  *\/ */
+/* struct cg_data_s { */
 
-	float* r;
-	float* p;
-	float* Ap;
-};
+/* 	float* r; */
+/* 	float* p; */
+/* 	float* Ap; */
+/* }; */
 
-const struct cg_data_s* cg_data_init(long N, const struct vec_iter_s* vops) 
-{
-	PTR_ALLOC(struct cg_data_s, cgdata);
+/* const struct cg_data_s* cg_data_init(long N, const struct vec_iter_s* vops)  */
+/* { */
+/* 	PTR_ALLOC(struct cg_data_s, cgdata); */
   
-	cgdata->r = vops->allocate(N);
-	cgdata->p = vops->allocate(N);
-	cgdata->Ap = vops->allocate(N);
+/* 	cgdata->r = vops->allocate(N); */
+/* 	cgdata->p = vops->allocate(N); */
+/* 	cgdata->Ap = vops->allocate(N); */
 
-	return cgdata;
-}
+/* 	return cgdata; */
+/* } */
 
-void cg_data_free(const struct cg_data_s* cgdata, const struct vec_iter_s* vops) 
-{
-	vops->del(cgdata->r);
-	vops->del(cgdata->p);
-	vops->del(cgdata->Ap);
-}
+/* void cg_data_free(const struct cg_data_s* cgdata, const struct vec_iter_s* vops)  */
+/* { */
+/* 	vops->del(cgdata->r); */
+/* 	vops->del(cgdata->p); */
+/* 	vops->del(cgdata->Ap); */
+/* } */
 
-/**
- * Conjugate Gradient Descent with history saving and pre-allocated data.
- * The history and cgdata should be preallocated.
- *
- * Preallocating the data is useful if the conjgrad is called within
- * an iteration loop (i.e. admm).
- */
-float conjgrad_hist_prealloc(struct iter_history_s* history, unsigned int maxiter, float l2lambda, float epsilon, 
-			     long N, void* data, struct cg_data_s* cgdata,
-			     const struct vec_iter_s* vops,
-			     void (*linop)(void* data, float* dst, const float* src), 
-			     float* x, const float* b, const float* x_truth,
-			     void* obj_eval_data,
-			     float (*obj_eval)(const void*, const float*))
-{
-	float* r = cgdata->r;
-	float* p = cgdata->p;
-	float* Ap = cgdata->Ap;
+/* /\** */
+/*  * Conjugate Gradient Descent with history saving and pre-allocated data. */
+/*  * The history and cgdata should be preallocated. */
+/*  * */
+/*  * Preallocating the data is useful if the conjgrad is called within */
+/*  * an iteration loop (i.e. admm). */
+/*  *\/ */
+/* float conjgrad_hist_prealloc(struct iter_history_s* history, unsigned int maxiter, float l2lambda, float epsilon,  */
+/* 			     long N, void* data, struct cg_data_s* cgdata, */
+/* 			     const struct vec_iter_s* vops, */
+/* 			     void (*linop)(void* data, float* dst, const float* src),  */
+/* 			     float* x, const float* b, const float* x_truth, */
+/* 			     void* obj_eval_data, */
+/* 			     float (*obj_eval)(const void*, const float*)) */
+/* { */
+/* 	float* r = cgdata->r; */
+/* 	float* p = cgdata->p; */
+/* 	float* Ap = cgdata->Ap; */
 
-	float* x_err = NULL;
+/* 	float* x_err = NULL; */
 
-	if (NULL != x_truth)
-		x_err = vops->allocate(N);
+/* 	if (NULL != x_truth) */
+/* 		x_err = vops->allocate(N); */
 
-	// The first calculation of the residual might not
-	// be necessary in some cases...
+/* 	// The first calculation of the residual might not */
+/* 	// be necessary in some cases... */
 
-	linop(data, r, x);		// r = A x
-	vops->axpy(N, r, l2lambda, x);
+/* 	linop(data, r, x);		// r = A x */
+/* 	vops->axpy(N, r, l2lambda, x); */
 
-	vops->xpay(N, -1., r, b);	// r = b - r = b - A x
-	vops->copy(N, p, r);		// p = r
+/* 	vops->xpay(N, -1., r, b);	// r = b - r = b - A x */
+/* 	vops->copy(N, p, r);		// p = r */
 
-	float rsnot = (float)pow(vops->norm(N, r), 2.);
-	float rsold = rsnot;
-	float rsnew = rsnot;
+/* 	float rsnot = (float)pow(vops->norm(N, r), 2.); */
+/* 	float rsold = rsnot; */
+/* 	float rsnew = rsnot; */
 
-	float eps_squared = pow(epsilon, 2.);
+/* 	float eps_squared = pow(epsilon, 2.); */
 
 
-	for (unsigned int i = 0; i < maxiter; i++) {
+/* 	for (unsigned int i = 0; i < maxiter; i++) { */
 
-		history->numiter = i + 1;
+/* 		history->numiter = i + 1; */
 		
-		if (NULL != x_truth) {
+/* 		if (NULL != x_truth) { */
 
-			vops->sub(N, x_err, x, x_truth);
-			float relMSE = vops->norm(N, x_err) / vops->norm(N, x_truth);
-			history->relMSE[i] = relMSE;
-			debug_printf(DP_DEBUG3, "relMSE = %f\n", relMSE);
-		}
+/* 			vops->sub(N, x_err, x, x_truth); */
+/* 			float relMSE = vops->norm(N, x_err) / vops->norm(N, x_truth); */
+/* 			history->relMSE[i] = relMSE; */
+/* 			debug_printf(DP_DEBUG3, "relMSE = %f\n", relMSE); */
+/* 		} */
 
-		if ((NULL != obj_eval) && (NULL != obj_eval_data)) {
+/* 		if ((NULL != obj_eval) && (NULL != obj_eval_data)) { */
 
-			float objval = obj_eval(obj_eval_data, x);
-			history->objective[i] = objval;
-			debug_printf(DP_DEBUG3, "#CG%d OBJVAL= %f\n", i, objval);
-		}
+/* 			float objval = obj_eval(obj_eval_data, x); */
+/* 			history->objective[i] = objval; */
+/* 			debug_printf(DP_DEBUG3, "#CG%d OBJVAL= %f\n", i, objval); */
+/* 		} */
 
-		//debug_printf(DP_DEBUG3, "#%d: %f\n", i, (double)sqrtf(rsnew));
+/* 		//debug_printf(DP_DEBUG3, "#%d: %f\n", i, (double)sqrtf(rsnew)); */
 
-		linop(data, Ap, p);	// Ap = A p
-		vops->axpy(N, Ap, l2lambda, p);
+/* 		linop(data, Ap, p);	// Ap = A p */
+/* 		vops->axpy(N, Ap, l2lambda, p); */
 
-		float alpha = rsold / (float)vops->dot(N, p, Ap);
+/* 		float alpha = rsold / (float)vops->dot(N, p, Ap); */
 
-		vops->axpy(N, x, +alpha, p);
-		vops->axpy(N, r, -alpha, Ap);
+/* 		vops->axpy(N, x, +alpha, p); */
+/* 		vops->axpy(N, r, -alpha, Ap); */
 	
-		rsnew = (float)pow(vops->norm(N, r), 2.);
-		float beta = rsnew / rsold;
+/* 		rsnew = (float)pow(vops->norm(N, r), 2.); */
+/* 		float beta = rsnew / rsold; */
 		
-		rsold = rsnew;
+/* 		rsold = rsnew; */
 
-		if (rsnew <= eps_squared) {
-			//debug_printf(DP_DEBUG3, "%d ", i);
-			break;
+/* 		if (rsnew <= eps_squared) { */
+/* 			//debug_printf(DP_DEBUG3, "%d ", i); */
+/* 			break;
 		}
 
 		vops->xpay(N, beta, p, r);	// p = beta * p + r
@@ -697,7 +687,7 @@ float conjgrad_hist_prealloc(struct iter_history_s* history, unsigned int maxite
 
 
 
-/**
+/\**
  * Iteratively Regularized Gauss-Newton Method
  * (Bakushinsky 1993)
  *
@@ -705,7 +695,7 @@ float conjgrad_hist_prealloc(struct iter_history_s* history, unsigned int maxite
  *
  * IRGNM: DF^H ((y - F x_0) + DF (xn - x0)) = ( DF^H DF + alpha ) (dx + xn - x0)
  *        DF^H ((y - F x_0)) - alpha (xn - x0) = ( DF^H DF + alpha) dx
- */
+ *\/
 void irgnm(unsigned int iter, float alpha, float redu, void* data, long N, long M,
 	const struct vec_iter_s* vops,
 	void (*op)(void* data, float* dst, const float* src), 
@@ -744,12 +734,12 @@ void irgnm(unsigned int iter, float alpha, float redu, void* data, long N, long 
 }
 
 
-/**
+/\**
  * Projection onto Convex Sets
  *
  * minimize 0 subject to: x in C_1, x in C_2, ..., x in C_D,
  * where the C_i are convex sets
- */
+ *\/
 void pocs(unsigned int maxiter,
 	unsigned int D, const struct pocs_proj_op* proj_ops, 
 	const struct vec_iter_s* vops,
@@ -791,9 +781,9 @@ void pocs(unsigned int maxiter,
 }
 
 
-/**
+/\**
  *  Power iteration
- */
+ *\/
 double power(unsigned int maxiter,
 	   long N, void* data,
 	   const struct vec_iter_s* vops,
@@ -813,7 +803,7 @@ double power(unsigned int maxiter,
 	return s;
 }
 
-/**
+/\**
  * @brief Proximal gradient descent
  *
  * Finds stationary point of f(x) + g(x)
@@ -822,7 +812,7 @@ double power(unsigned int maxiter,
  *
  * Requires gradient of f and proximal of g
  * 
- */
+ *\/
 void pgd( unsigned int iter,			///< Number of iterations
 	  float tol,				///< Termination tolerance 
 	  float alpha,			        ///< Step size
@@ -852,20 +842,21 @@ void pgd( unsigned int iter,			///< Number of iterations
 
 		proxg( gdata, alpha, x_new, x_new );
 
-		if (NULL != ls)
-			while( !ls( fdata, alpha, x_new, gradfx, x )  ){
 
-				alpha /= 2.0f;
+		// Line-search
+		while( (NULL != ls) && !ls( fdata, alpha, x_new, gradfx, x )  ){
+
+			alpha /= 2.0f;
 			
-				// x_new = proxg (x - alpha gradf)
+			// x_new = proxg (x - alpha gradf)
 			
-				vops->smul( N, -alpha, x_new, gradfx );
+			vops->smul( N, -alpha, x_new, gradfx );
 
-				vops->add( N, x_new, x, x_new );
+			vops->add( N, x_new, x, x_new );
 
-				proxg( gdata, alpha, x_new, x_new );
+			proxg( gdata, alpha, x_new, x_new );
 
-			}
+		}
 
 		// x = x_new
 		vops->copy(N, x, x_new);
