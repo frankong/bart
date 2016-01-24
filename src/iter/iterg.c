@@ -11,6 +11,7 @@
 
 #include "num/multind.h"
 #include "num/flpmath.h"
+#include "num/ops.h"
 
 #include "misc/misc.h"
 
@@ -100,13 +101,31 @@ void iterg_landweber(void* _conf,
 {
 	struct iterg_landweber_conf* conf = _conf;
 
-	float* tmp = md_alloc_sameplace(1, MD_DIMS(N), FL_SIZE, src);
-
 	landweber(conf->iter, conf->epsilon, conf->alpha, N, M,
 		data2, select_vecops(src), frw, adj, dst, src, NULL);
 
-	md_free(tmp);
 }
 
 
+void iterg_pgd( void* _conf,				///< Configuration structure
+		const struct operator_s* gradf,		///< Gradient of f
+		const struct operator_p_s* proxg,	///< Proximal operator of g
+		long size,				///< Length of image
+ 		float* image,				///< Image
+		ls_f linesearch )			///< Linesearch function (optional)
+{
+	struct iterg_pgd_conf* conf = _conf;
 
+	pgd( conf->iter,
+	     conf->tol,
+	     conf->alpha,
+	     size,
+	     select_vecops(image),
+	     (void*) gradf,
+	     operator_iter,
+	     (void*) proxg,
+	     operator_p_iter,
+	     image,
+	     linesearch );
+
+}

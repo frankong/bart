@@ -14,42 +14,42 @@
 struct vec_iter_s;
 
 /**
- * @brief Generic operator function type
+ * Generic operator function type
  **/
 typedef void (*op_f)(void* data, float* dst, const float* src);
 
 
 /**
- * @brief Proximal operator function type
+ * Proximal operator function type
  */
 typedef void (*prox_f)(void* data, float lambda, float* dst, const float* src);
 
 /**
- * @brief Objective function type
+ * Objective function type
  */
 typedef float (*obj_f)(const void*, const float*);
 
 /**
- * @brief Line search criterion function type
+ * Line search criterion function type
  */
 typedef _Bool (*ls_f)(const void *fdata, float alpha, const float* x_new, const float* gradfx, const float* x );
 
 /**
- * @brief Inverse operator function type
+ * Inverse operator function type
  *
  * dst = inv(A + alpha I) * src
  */
 typedef void (*inv_f)(void* data, float alpha, float* dst, const float* src);
 
 /**
- * @brief Inverse operator 2 function type
+ * Inverse operator 2 function type
  *
  */
 typedef void (*inv2_f)(void* data, float alpha, float* res, float* dst, const float* src);
 
 
 /**
- * @brief Store italg history
+ * Store italg history
  */
 struct iter_history_s {
 	unsigned int numiter;   ///< Number of iterations
@@ -66,7 +66,7 @@ struct pocs_proj_op {
 };
 
 /**
- * @brief Conjugate gradient
+ * Conjugate gradient
  *
  * Solve (A + lambda I) x = b
  * where A is Hermitian, ie A = A^*
@@ -86,7 +86,7 @@ float conjgrad(unsigned int iter,		///< Number of iterations
 
 
 /**
- * @brief Conjugate gradient with stored iteration parameters
+ * Conjugate gradient with stored iteration parameters
  *
  * Solve (A + lambda I) x = b
  * where A is Hermitian, ie A = A^*
@@ -128,7 +128,7 @@ float conjgrad_hist_prealloc(struct iter_history_s* iter_history,
 
 
 /**
- * @brief Landweber iteration
+ * Landweber iteration
  *
  * Solves \min_x 1/2 || A x - b ||_2^2
  */
@@ -146,10 +146,10 @@ void landweber(unsigned int iter,		///< Number of iterations
 	       obj_f obj);			///< Objective function (optional)
 
 /**
- * @brief Symmetric landweber iteration
+ * Symmetric landweber iteration
  *
- * Solves A x = b or equivalently
- * \min_x x^T A x - x^T b
+ * Solves \f$ A x = b \f$ or equivalently
+ * \f$ \min_x x^T A x - x^T b \f$
  * A must be conjugate symmetric
  */
 void landweber_sym(unsigned int iter,			///< Number of iterations
@@ -164,7 +164,7 @@ void landweber_sym(unsigned int iter,			///< Number of iterations
 
 
 /**
- * @brief Iterative soft-thresholding
+ * Iterative soft-thresholding
  *
  * Solves \min_x x^T A x - x^T b + \lambda prox
  * A must be conjugate symmetric
@@ -172,8 +172,8 @@ void landweber_sym(unsigned int iter,			///< Number of iterations
 void ist(unsigned int iter,		///< Number of iterations
 	 float tol,			///< Termination tolerance
 	 float stepsize,		///< Step size 
-	 float continuation,		///< TODO
-	 _Bool hogwild,			///< TODO
+	 float continuation,		///< Regularization continuation
+	 _Bool hogwild,			///< Hogwild step-size
 	 long N,			///< Length of variable x
 	 void* data,			///< Data structure for linear operator A
 	 const struct vec_iter_s* vops, ///< Vector arithmetic operator (CPU/GPU)
@@ -188,7 +188,7 @@ void ist(unsigned int iter,		///< Number of iterations
 
 
 /**
- * @brief Fast iterative soft-thresholding
+ * Fast iterative soft-thresholding
  *
  * Solves \min_x x^T A x - x^T b + \lambda prox
  * A must be conjugate symmetric
@@ -196,8 +196,8 @@ void ist(unsigned int iter,		///< Number of iterations
 void fista(unsigned int iter,			///< Number of iterations
 	   float tol,				///< Termination tolerance
 	   float stepsize,			///< Step size 
-	   float continuation,			///< TODO
-	   _Bool hogwild,			///< TODO
+	   float continuation,			///< Regularization continuation
+	   _Bool hogwild,			///< Hogwild step-size
 	   long N,				///< Length of variable x
 	   void* data,				///< Data structure for linear operator A
 	   const struct vec_iter_s* vops,	///< Vector arithmetic operator (CPU/GPU)
@@ -212,7 +212,7 @@ void fista(unsigned int iter,			///< Number of iterations
 
 
 /**
- * @brief Proximal gradient descent
+ * Proximal gradient descent
  *
  * Solves \min_x f(x) + g(x)
  * where f is smooth (can be non-convex)
@@ -223,7 +223,7 @@ void fista(unsigned int iter,			///< Number of iterations
  */
 void pgd( unsigned int iter,			///< Number of iterations
 	  float tol,				///< Termination tolerance 
-	  float alpha,			        ///< Step size
+	  float stepsize,      		        ///< Step size
 	  long N,				///< Length of variable x
 	  const struct vec_iter_s* vops,	///< Vector arithmetic operator (CPU/GPU)
 	  void* fdata,			        ///< f data structure
@@ -231,13 +231,10 @@ void pgd( unsigned int iter,			///< Number of iterations
 	  void* gdata,			        ///< g data structure
 	  prox_f proxg,				///< Proximal operator of g
 	  float* x,				///< Optimization variable, ex, image
-	  const float* x_truth,			///< Ground truth (optional)
-	  void* odata,			        ///< Objective data structure (optional)
-	  obj_f obj, 				///< Objective function (optional)
 	  ls_f ls);                             ///< Line search criterion (optional)
 
 /**
- * @brief Iterative regularized Gauss-Newton method
+ * Iterative regularized Gauss-Newton method
  *
  * TODO
  */
@@ -252,12 +249,12 @@ void irgnm(unsigned int iter,			///< Number of iterations
 	   op_f adj,				///< Linear operator adjoint A^T 
 	   inv_f inv,				///< Inverse linear operator (A + alphaI)^-1
 	   float* x,				///< Optimization variable, ex, image
-	    const float* x0,			///< Initial estimate of x
-	    const float* y);			///< Observed data, ex, zero-filled image
+	   const float* x0,			///< Initial estimate of x
+	   const float* y);			///< Observed data, ex, zero-filled image
 
 
 /**
- * @brief Iterative regularized Gauss-Newton method
+ * Iterative regularized Gauss-Newton method
  *
  * TODO
  */
@@ -276,7 +273,7 @@ void irgnm2(unsigned int iter,			///< Number of iterations
 	    const float* y);			///< Observed data, ex, zero-filled image
 
 /**
- * @brief Split?
+ * Split?
  *
  * TODO
  */
@@ -294,7 +291,7 @@ void split(unsigned int iter,			///< Number of iterations
 
 
 /**
- * @brief Split bregman
+ * Split bregman
  *
  * TODO
  */
@@ -313,7 +310,7 @@ void splitbreg(unsigned int iter,		 ///< Number of iterations
 
 
 /**
- * @brief Iterative regularized Gauss-Newton method
+ * Iterative regularized Gauss-Newton method
  *
  * TODO
  */
@@ -335,7 +332,7 @@ void irgnm_t(unsigned int iter,			 ///< Number of iterations
 
 
 /**
- * @brief Projection over convex sets
+ * Projection over convex sets
  *
  * Find x such that x \in C_i
  * where C_i's are convex sets
@@ -351,7 +348,7 @@ void pocs(unsigned int iter,			 ///< Number of iterations
 	  obj_f obj);				 ///< Objective function (optional)
 
 /**
- * @brief Power iteration
+ * Power iteration
  *
  * @return \max_x x^T A x
  */

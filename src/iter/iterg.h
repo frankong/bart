@@ -26,7 +26,7 @@ struct iterg_irgnm_conf {
 	float redu;
 };
 
-void iter3_irgnm (void* _conf,
+void iterg_irgnm (void* _conf,
 		  void (*frw)(void* _data, float* dst, const float* src),
 		  void (*der)(void* _data, float* dst, const float* src),
 		  void (*adj)(void* _data, float* dst, const float* src),

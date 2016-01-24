@@ -143,14 +143,14 @@ static float ist_continuation(struct iter_data* itrdata, const float delta)
  * Iterative Soft Thresholding
  */
 void ist(unsigned int maxiter, float epsilon, float tau,
-		float continuation, bool hogwild, long N, void* data,
-		const struct vec_iter_s* vops,
-		void (*op)(void* data, float* dst, const float* src), 
-		void (*thresh)(void* data, float lambda, float* dst, const float* src),
-		void* tdata,
-		float* x, const float* b, const float* x_truth,
-		void* obj_eval_data,
-		float (*obj_eval)(const void*, const float*))
+	 float continuation, bool hogwild, long N, void* data,
+	 const struct vec_iter_s* vops,
+	 void (*op)(void* data, float* dst, const float* src), 
+	 void (*thresh)(void* data, float lambda, float* dst, const float* src),
+	 void* tdata,
+	 float* x, const float* b, const float* x_truth,
+	 void* obj_eval_data,
+	 float (*obj_eval)(const void*, const float*))
 {
 
 	struct iter_data itrdata = {
@@ -813,11 +813,10 @@ double power(unsigned int maxiter,
 	return s;
 }
 
-
 /**
  * @brief Proximal gradient descent
  *
- * Finds local minimum of f(x) + g(x)
+ * Finds stationary point of f(x) + g(x)
  * where f is smooth, but can be non-convex
  * and g is non-smooth but convex
  *
@@ -834,9 +833,6 @@ void pgd( unsigned int iter,			///< Number of iterations
 	  void* gdata,			        ///< g data structure
 	  prox_f proxg,				///< Proximal operator of g
 	  float* x,				///< Optimization variable, ex, image
-	  const float* x_truth,			///< Ground truth (optional)
-	  void* odata,			        ///< Objective data structure (optional)
-	  obj_f obj, 				///< Objective function (optional)
 	  ls_f ls)                              ///< Line search criterion (optional)
 {
 	float* x_new = vops->allocate(N);
@@ -877,10 +873,6 @@ void pgd( unsigned int iter,			///< Number of iterations
 
 
 	// TODO support these.
-	// TODO make ist, fista and landweber based on this.
 	UNUSED( tol );
-	UNUSED( x_truth );
-	UNUSED( odata );
-	UNUSED( obj );
 }
 
