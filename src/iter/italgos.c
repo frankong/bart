@@ -856,19 +856,20 @@ void pgd( unsigned int iter,			///< Number of iterations
 
 		proxg( gdata, alpha, x_new, x_new );
 
-		while( !ls( fdata, alpha, x_new, gradfx, x )  ){
+		if (NULL != ls)
+			while( !ls( fdata, alpha, x_new, gradfx, x )  ){
 
-			alpha /= 2.0f;
+				alpha /= 2.0f;
 			
-			// x_new = proxg (x - alpha gradf)
+				// x_new = proxg (x - alpha gradf)
 			
-			vops->smul( N, -alpha, x_new, gradfx );
+				vops->smul( N, -alpha, x_new, gradfx );
 
-			vops->add( N, x_new, x, x_new );
+				vops->add( N, x_new, x, x_new );
 
-			proxg( gdata, alpha, x_new, x_new );
+				proxg( gdata, alpha, x_new, x_new );
 
-		}
+			}
 
 		// x = x_new
 		vops->copy(N, x, x_new);

@@ -127,11 +127,11 @@ void noir_recon(const long dims[DIMS], unsigned int iter, float th, complex floa
 
 	if (-1. == th) {
 
-		struct iter3_irgnm_conf conf = { .iter = iter, .alpha = 1., .redu = 2. };
+		struct iterg_irgnm_conf conf = { .iter = iter, .alpha = 1., .redu = 2. };
 		bool repeat = false;
 
 		do {
-			iter3_irgnm(&conf, frw, der, adj, &data, size * 2, (float*)img, data_size * 2, (const float*)kspace);
+			iterg_irgnm(&conf, frw, der, adj, &data, size * 2, (float*)img, data_size * 2, (const float*)kspace);
 #ifdef PHSING
 			{
 //			if (repeat) {

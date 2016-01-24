@@ -4,6 +4,7 @@
  *
  * Authors: 
  * 2012, 2014 Martin Uecker <uecker@eecs.berkeley.edu>
+ * 2016       Frank Ong <frnakong@berkeley.edu>
  */
 
 #include <assert.h>
@@ -67,14 +68,14 @@ static void adjoint(void* _data, float* dst, const float* src)
 
 
 
-void iter3_irgnm(void* _conf,
+void iterg_irgnm(void* _conf,
 		void (*frw)(void* _data, float* dst, const float* src),
 		void (*der)(void* _data, float* dst, const float* src),
 		void (*adj)(void* _data, float* dst, const float* src),
 		void* data2,
 		long N, float* dst, long M, const float* src)
 {
-	struct iter3_irgnm_conf* conf = _conf;
+	struct iterg_irgnm_conf* conf = _conf;
 
 	float* tmp = md_alloc_sameplace(1, MD_DIMS(M), FL_SIZE, src);
 	struct irgnm_s data = { frw, der, adj, data2, tmp, N };
@@ -91,16 +92,13 @@ void iter3_irgnm(void* _conf,
 
 
 
-void iter3_landweber(void* _conf,
+void iterg_landweber(void* _conf,
 		void (*frw)(void* _data, float* dst, const float* src),
-		void (*der)(void* _data, float* dst, const float* src),
 		void (*adj)(void* _data, float* dst, const float* src),
 		void* data2,
 		long N, float* dst, long M, const float* src)
 {
-	struct iter3_landweber_conf* conf = _conf;
-
-	assert(NULL == der);
+	struct iterg_landweber_conf* conf = _conf;
 
 	float* tmp = md_alloc_sameplace(1, MD_DIMS(N), FL_SIZE, src);
 
